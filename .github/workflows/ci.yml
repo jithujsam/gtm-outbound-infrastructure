@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [gtm-validation-tool, systems/client-visibility-layer]
+        app: [gtm-validation-tool, apps/klaroh]
     defaults:
       run:
         working-directory: ${{ matrix.app }}

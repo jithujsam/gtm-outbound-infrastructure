@@ -1,0 +1,199 @@
+column agency_details.agency_logo_url text null=YES default=- gen=-
+column agency_details.agency_name text null=YES default=- gen=-
+column agency_details.agency_website text null=YES default=- gen=-
+column agency_details.created_at timestamp with time zone null=NO default=now() gen=-
+column agency_details.id uuid null=NO default=gen_random_uuid() gen=-
+column agency_details.plan text null=NO default='trial'::text gen=-
+column agency_details.timezone text null=NO default='UTC'::text gen=-
+column agency_details.updated_at timestamp with time zone null=NO default=now() gen=-
+column agency_details.user_id uuid null=NO default=- gen=-
+column campaigns.agency_id uuid null=NO default=- gen=-
+column campaigns.bounced_count integer(32,0) null=YES default=- gen=-
+column campaigns.client_id uuid null=NO default=- gen=-
+column campaigns.completed_count integer(32,0) null=YES default=- gen=-
+column campaigns.contacted_count integer(32,0) null=YES default=- gen=-
+column campaigns.created_at timestamp with time zone null=YES default=now() gen=-
+column campaigns.emails_sent integer(32,0) null=YES default=0 gen=-
+column campaigns.emails_sent_count integer(32,0) null=YES default=- gen=-
+column campaigns.external_created_at timestamp with time zone null=YES default=- gen=-
+column campaigns.external_daily_limit integer(32,0) null=YES default=- gen=-
+column campaigns.external_end_date date null=YES default=- gen=-
+column campaigns.external_id text null=YES default=- gen=-
+column campaigns.external_is_evergreen boolean null=YES default=false gen=-
+column campaigns.external_name text null=YES default=- gen=-
+column campaigns.external_pl_value numeric(10,2) null=YES default=- gen=-
+column campaigns.external_sender_count integer(32,0) null=YES default=- gen=-
+column campaigns.external_start_date date null=YES default=- gen=-
+column campaigns.external_status integer(32,0) null=YES default=- gen=-
+column campaigns.external_updated_at timestamp with time zone null=YES default=- gen=-
+column campaigns.id uuid null=NO default=gen_random_uuid() gen=-
+column campaigns.integration_id uuid null=YES default=- gen=-
+column campaigns.last_synced timestamp with time zone null=YES default=now() gen=-
+column campaigns.leads_count integer(32,0) null=YES default=- gen=-
+column campaigns.leads_generated integer(32,0) null=YES default=- gen=(((week_1_leads + week_2_leads) + week_3_leads) + week_4_leads)
+column campaigns.link_click_count integer(32,0) null=YES default=- gen=-
+column campaigns.link_click_count_unique integer(32,0) null=YES default=- gen=-
+column campaigns.name text null=NO default=- gen=-
+column campaigns.new_leads_contacted_count integer(32,0) null=YES default=- gen=-
+column campaigns.open_count integer(32,0) null=YES default=- gen=-
+column campaigns.open_count_unique integer(32,0) null=YES default=- gen=-
+column campaigns.open_rate numeric(5,2) null=YES default=0 gen=-
+column campaigns.positive_reply_rate numeric(5,2) null=YES default=0 gen=-
+column campaigns.reply_count integer(32,0) null=YES default=- gen=-
+column campaigns.reply_count_unique integer(32,0) null=YES default=- gen=-
+column campaigns.reply_rate numeric(5,2) null=YES default=0 gen=-
+column campaigns.source text null=YES default=- gen=-
+column campaigns.tool text null=YES default=- gen=-
+column campaigns.total_closed integer(32,0) null=YES default=- gen=-
+column campaigns.total_interested integer(32,0) null=YES default=- gen=-
+column campaigns.total_meeting_booked integer(32,0) null=YES default=- gen=-
+column campaigns.total_meeting_completed integer(32,0) null=YES default=- gen=-
+column campaigns.total_opportunities integer(32,0) null=YES default=- gen=-
+column campaigns.total_opportunity_value numeric(14,2) null=YES default=- gen=-
+column campaigns.unsubscribed_count integer(32,0) null=YES default=- gen=-
+column campaigns.updated_at timestamp with time zone null=YES default=now() gen=-
+column campaigns.week_1_leads integer(32,0) null=YES default=0 gen=-
+column campaigns.week_2_leads integer(32,0) null=YES default=0 gen=-
+column campaigns.week_3_leads integer(32,0) null=YES default=0 gen=-
+column campaigns.week_4_leads integer(32,0) null=YES default=0 gen=-
+column clients.active_inboxes integer(32,0) null=YES default=- gen=-
+column clients.agency_id uuid null=NO default=- gen=-
+column clients.client_email text null=YES default=- gen=-
+column clients.created_at timestamp with time zone null=YES default=now() gen=-
+column clients.domain_health_score integer(32,0) null=YES default=- gen=-
+column clients.domain_health_status text null=YES default='Healthy'::text gen=-
+column clients.id uuid null=NO default=gen_random_uuid() gen=-
+column clients.name text null=NO default=- gen=-
+column clients.sending_capacity integer(32,0) null=YES default=- gen=-
+column clients.slug text null=NO default=- gen=-
+column clients.status text null=NO default='active'::text gen=-
+column clients.updated_at timestamp with time zone null=YES default=now() gen=-
+column email_logs.body_html text null=YES default=- gen=-
+column email_logs.body_text text null=YES default=- gen=-
+column email_logs.client_id uuid null=YES default=- gen=-
+column email_logs.email_type text null=NO default=- gen=-
+column email_logs.error_message text null=YES default=- gen=-
+column email_logs.from_email text null=NO default=- gen=-
+column email_logs.from_name text null=YES default=- gen=-
+column email_logs.id uuid null=NO default=gen_random_uuid() gen=-
+column email_logs.metadata jsonb null=YES default=- gen=-
+column email_logs.resend_id text null=YES default=- gen=-
+column email_logs.sent_at timestamp with time zone null=NO default=now() gen=-
+column email_logs.status text null=NO default='sent'::text gen=-
+column email_logs.subject text null=NO default=- gen=-
+column email_logs.to_email text null=NO default=- gen=-
+column email_logs.to_name text null=YES default=- gen=-
+column email_logs.user_id uuid null=YES default=- gen=-
+column integrations.agency_id uuid null=NO default=- gen=-
+column integrations.api_key_encrypted text null=YES default=- gen=-
+column integrations.created_at timestamp with time zone null=YES default=now() gen=-
+column integrations.enabled boolean null=YES default=true gen=-
+column integrations.id uuid null=NO default=gen_random_uuid() gen=-
+column integrations.label text null=YES default=- gen=-
+column integrations.tool text null=NO default=- gen=-
+column integrations.updated_at timestamp with time zone null=YES default=now() gen=-
+column rate_limits.count integer(32,0) null=NO default=0 gen=-
+column rate_limits.key text null=NO default=- gen=-
+column rate_limits.window_start timestamp with time zone null=NO default=now() gen=-
+column remarks.agency_id uuid null=NO default=- gen=-
+column remarks.attachment_name text null=YES default=- gen=-
+column remarks.attachment_url text null=YES default=- gen=-
+column remarks.author_type text null=NO default=- gen=-
+column remarks.body text null=NO default=- gen=-
+column remarks.campaign_id uuid null=YES default=- gen=-
+column remarks.category text null=NO default=- gen=-
+column remarks.client_id uuid null=NO default=- gen=-
+column remarks.created_at timestamp with time zone null=NO default=now() gen=-
+column remarks.id uuid null=NO default=gen_random_uuid() gen=-
+column remarks.title text null=NO default=- gen=-
+constraint agency_details c CHECK ((plan = ANY (ARRAY['trial'::text, 'basic'::text, 'standard'::text, 'pro'::text])))
+constraint agency_details f FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+constraint agency_details p PRIMARY KEY (id)
+constraint agency_details u UNIQUE (user_id)
+constraint campaigns c CHECK ((source = ANY (ARRAY['demo'::text, 'smartlead'::text, 'instantly'::text])))
+constraint campaigns c CHECK ((tool = ANY (ARRAY['smartlead'::text, 'demo'::text, 'instantly'::text])))
+constraint campaigns f FOREIGN KEY (agency_id) REFERENCES agency_details(id) ON DELETE CASCADE
+constraint campaigns f FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+constraint campaigns f FOREIGN KEY (integration_id) REFERENCES integrations(id) ON DELETE SET NULL
+constraint campaigns p PRIMARY KEY (id)
+constraint clients c CHECK ((status = ANY (ARRAY['active'::text, 'paused'::text, 'ended'::text])))
+constraint clients f FOREIGN KEY (agency_id) REFERENCES agency_details(id) ON DELETE CASCADE
+constraint clients p PRIMARY KEY (id)
+constraint clients u UNIQUE (slug)
+constraint email_logs c CHECK ((email_type = ANY (ARRAY['onboarding'::text, 'client_invite'::text, 'remark_notification'::text, 'weekly_summary'::text])))
+constraint email_logs c CHECK ((status = ANY (ARRAY['sent'::text, 'failed'::text])))
+constraint email_logs f FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL
+constraint email_logs f FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL
+constraint email_logs p PRIMARY KEY (id)
+constraint integrations c CHECK ((tool = ANY (ARRAY['smartlead'::text, 'demo'::text, 'instantly'::text])))
+constraint integrations f FOREIGN KEY (agency_id) REFERENCES agency_details(id) ON DELETE CASCADE
+constraint integrations p PRIMARY KEY (id)
+constraint rate_limits p PRIMARY KEY (key)
+constraint remarks c CHECK ((author_type = ANY (ARRAY['agency'::text, 'client'::text])))
+constraint remarks f FOREIGN KEY (agency_id) REFERENCES agency_details(id) ON DELETE CASCADE
+constraint remarks f FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+constraint remarks f FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+constraint remarks p PRIMARY KEY (id)
+execute delete_demo_campaigns(p_integration_id uuid) PUBLIC
+execute generate_demo_data() PUBLIC
+execute get_campaign_data(p_user_id uuid, p_client_id uuid) PUBLIC
+execute get_clients_with_campaign_count(p_user_id uuid) PUBLIC
+execute get_public_campaign_data(p_client_id uuid) PUBLIC
+execute get_public_campaign_data(p_client_id uuid) anon
+execute get_public_campaign_data(p_client_id uuid) authenticated
+execute get_public_campaigns(p_client_id uuid) PUBLIC
+execute get_public_campaigns(p_client_id uuid) anon
+execute get_public_campaigns(p_client_id uuid) authenticated
+execute get_public_client_by_slug(p_slug text) PUBLIC
+execute get_public_client_by_slug(p_slug text) anon
+execute get_public_client_by_slug(p_slug text) authenticated
+execute get_public_remarks(p_client_id uuid, p_campaign_id uuid) PUBLIC
+execute get_public_remarks(p_client_id uuid, p_campaign_id uuid) anon
+execute get_public_remarks(p_client_id uuid, p_campaign_id uuid) authenticated
+execute set_remark_agency_id() PUBLIC
+execute update_updated_at() PUBLIC
+function check_rate_limit(p_key text, p_limit integer, p_window_seconds integer) secdef=true config=search_path=public body=fc8fce3dba13699773f2f50de870210b
+function delete_demo_campaigns(p_integration_id uuid) secdef=false config=- body=ed099fd5bafe6739aecd67224c79bf05
+function generate_demo_data() secdef=false config=- body=ca648c3366ec63b0c80bf6f74fc2d192
+function get_campaign_data(p_user_id uuid, p_client_id uuid) secdef=false config=- body=a54f704751eedc46ee7697abc9a5c3ee
+function get_clients_with_campaign_count(p_user_id uuid) secdef=false config=- body=4bb1769a4dc1f95cc3783953264ca9fc
+function get_public_campaign_data(p_client_id uuid) secdef=true config=search_path=public body=298e174a493ebb87edd37e6bad428486
+function get_public_campaigns(p_client_id uuid) secdef=true config=search_path=public body=30d4eb91289ec39a8265a8f052c3c8fc
+function get_public_client_by_slug(p_slug text) secdef=true config=search_path=public body=94983bc1fe0c3a0f3c3db9d36c20aba6
+function get_public_remarks(p_client_id uuid, p_campaign_id uuid) secdef=true config=search_path=public body=9ad34747707697db8fd2e173a5d1f985
+function set_remark_agency_id() secdef=true config=search_path=public body=36d0c17535a7a2ae1f393ae98e29145a
+function update_updated_at() secdef=false config=- body=0ba6f773f96de69f495a97d9964f12ef
+index agency_details CREATE UNIQUE INDEX agency_details_user_id_key ON public.agency_details USING btree (user_id)
+index campaigns CREATE INDEX idx_campaigns_agency_id ON public.campaigns USING btree (agency_id)
+index campaigns CREATE INDEX idx_campaigns_agency_tool ON public.campaigns USING btree (agency_id, tool)
+index campaigns CREATE INDEX idx_campaigns_client_id ON public.campaigns USING btree (client_id)
+index campaigns CREATE INDEX idx_campaigns_external_id ON public.campaigns USING btree (external_id)
+index campaigns CREATE INDEX idx_campaigns_integration_id ON public.campaigns USING btree (integration_id)
+index clients CREATE INDEX idx_clients_agency_id ON public.clients USING btree (agency_id)
+index clients CREATE INDEX idx_clients_slug ON public.clients USING btree (slug)
+index clients CREATE UNIQUE INDEX clients_slug_key ON public.clients USING btree (slug)
+index integrations CREATE INDEX idx_integrations_agency_id ON public.integrations USING btree (agency_id)
+index remarks CREATE INDEX idx_remarks_agency_id ON public.remarks USING btree (agency_id)
+index remarks CREATE INDEX idx_remarks_campaign_id ON public.remarks USING btree (campaign_id)
+index remarks CREATE INDEX idx_remarks_client_id ON public.remarks USING btree (client_id)
+index remarks CREATE INDEX idx_remarks_created_at ON public.remarks USING btree (created_at DESC)
+policy agency_details owner_all_agency_details ALL roles=public using=(auth.uid() = user_id) check=(auth.uid() = user_id)
+policy campaigns owner_all_campaigns ALL roles=public using=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid()))) check=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid())))
+policy clients owner_all_clients ALL roles=public using=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid()))) check=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid())))
+policy email_logs owner_read_email_logs SELECT roles=public using=(auth.uid() = user_id) check=-
+policy integrations owner_all_integrations ALL roles=public using=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid()))) check=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid())))
+policy remarks agency_insert_remarks INSERT roles=public using=- check=((author_type = 'agency'::text) AND (agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid()))))
+policy remarks agency_read_remarks SELECT roles=public using=(agency_id IN ( SELECT agency_details.id FROM agency_details WHERE (agency_details.user_id = auth.uid()))) check=-
+policy remarks public_insert_client_remarks INSERT roles=anon using=- check=(author_type = 'client'::text)
+rls agency_details enabled=true
+rls campaigns enabled=true
+rls clients enabled=true
+rls email_logs enabled=true
+rls integrations enabled=true
+rls rate_limits enabled=true
+rls remarks enabled=true
+trigger agency_details update_agency_details_updated_at CREATE TRIGGER update_agency_details_updated_at BEFORE UPDATE ON public.agency_details FOR EACH ROW EXECUTE FUNCTION update_updated_at()
+trigger campaigns update_campaigns_updated_at CREATE TRIGGER update_campaigns_updated_at BEFORE UPDATE ON public.campaigns FOR EACH ROW EXECUTE FUNCTION update_updated_at()
+trigger clients update_clients_updated_at CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON public.clients FOR EACH ROW EXECUTE FUNCTION update_updated_at()
+trigger integrations update_integrations_updated_at CREATE TRIGGER update_integrations_updated_at BEFORE UPDATE ON public.integrations FOR EACH ROW EXECUTE FUNCTION update_updated_at()
+trigger remarks trg_set_remark_agency_id CREATE TRIGGER trg_set_remark_agency_id BEFORE INSERT ON public.remarks FOR EACH ROW EXECUTE FUNCTION set_remark_agency_id()

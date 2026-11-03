@@ -1,0 +1,8 @@
+<svg viewBox="290 255 1290 1320" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#003E2A" stroke-width="108" stroke-linejoin="round" stroke-linecap="round">
+    <!-- Stem -->
+    <path d="M 359 326 H 703 V 1506 H 359 Z"/>
+    <!-- Upper arm, top bar, and descending diagonal -->
+    <path d="M 380 1080 L 1075 330 L 1510 330 L 846 1200 L 1119 1505 L 1515 1505 L 1069 907"/>
+  </g>
+</svg>
