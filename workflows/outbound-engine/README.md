@@ -38,7 +38,7 @@ n8n, Claude Sonnet (Anthropic), Gmail, Airtable
 
 ## 🚀 Setup
 
-- Import `email-automation-openrate.json` into n8n
+- Import `email-sending-open-tracking.json` into n8n
 - Credentials needed: Anthropic API key, Gmail OAuth2, Airtable Personal Access Token
 - Replace all `YOUR_*` placeholders: Airtable base ID, table ID, view ID for the send queue, webhook UUID for the pixel endpoint
 - In the Gmail node, update the `sendTo` field to your sending address and update the pixel `src` URL to `https://YOUR_N8N_INSTANCE/webhook/YOUR_WEBHOOK_UUID`

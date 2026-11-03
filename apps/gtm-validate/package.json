@@ -1,5 +1,5 @@
 {
-  "name": "gtm-validation-tool",
+  "name": "gtm-validate",
   "version": "0.1.0",
   "private": true,
   "scripts": {
