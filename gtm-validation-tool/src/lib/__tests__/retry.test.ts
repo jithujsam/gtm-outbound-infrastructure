@@ -12,7 +12,7 @@ describe("classifyError", () => {
     expect(classifyError("HTTP 429 Too Many Requests")).toBe("retryable");
     expect(classifyError("HTTP 503 Service Unavailable")).toBe("retryable");
     expect(classifyError("fetch failed: ETIMEDOUT")).toBe("retryable");
-    expect(classifyError("Invalid JSON in Gemini response")).toBe("retryable");
+    expect(classifyError("Invalid JSON from OpenAI batch")).toBe("retryable");
     expect(classifyError("Batch size mismatch: expected 5, got 4")).toBe("retryable");
   });
 

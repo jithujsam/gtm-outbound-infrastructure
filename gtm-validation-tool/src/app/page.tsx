@@ -2,8 +2,7 @@ import { Suspense } from "react";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { DashboardStats } from "@/types";
-import type { Project } from "@/types";
+import { ICP_VERTICALS, type DashboardStats, type Project } from "@/types";
 
 export const dynamic = "force-dynamic";
 
@@ -44,9 +43,7 @@ async function getDashboardData(): Promise<{
       verticalCounts[row.matched_vertical] = Number(row.count);
     }
 
-    const verticalBreakdown: VerticalCount[] = [
-      "D2C / E-commerce", "Defense / Aviation", "Fintech", "Pharma", "Semiconductor / Data Center",
-    ].map((v) => ({ vertical: v, count: verticalCounts[v] ?? 0 }));
+    const verticalBreakdown: VerticalCount[] = ICP_VERTICALS.map((v) => ({ vertical: v, count: verticalCounts[v] ?? 0 }));
 
     const projects = recentProjects?.map((p) => ({
       ...p,

@@ -42,7 +42,22 @@ CREATE POLICY "User owns leads" ON leads
   FOR ALL USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
--- RLS on integration_settings — user can only see their own
-CREATE POLICY "User owns settings" ON integration_settings
-  FOR ALL USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+-- RLS on integration_settings — user can only see their own.
+-- On a fresh database integration_settings still has the 00001 shape (no
+-- user_id), because CREATE TABLE IF NOT EXISTS above is skipped. Creating
+-- the policy unconditionally made this migration fail there. 00004 drops and
+-- recreates the table with this policy, so it is only needed when user_id
+-- already exists.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'integration_settings'
+      AND column_name = 'user_id'
+  ) THEN
+    CREATE POLICY "User owns settings" ON integration_settings
+      FOR ALL USING (auth.uid() = user_id)
+      WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;

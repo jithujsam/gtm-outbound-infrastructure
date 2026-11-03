@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { processJobBatch, processEmailBatch } from "@/lib/processor";
 
+// The email processor bounds its own work (see EMAIL_TIME_BUDGET_MS); this is
+// the hard ceiling for the last in-flight Clearout request.
+export const maxDuration = 300;
+
 export async function POST(
   _request: NextRequest,
   { params }: { params: Promise<{ jobId: string }> }

@@ -24,10 +24,8 @@ export function classifyError(errorMessage: string): ErrorClass {
     errorMessage.includes("ENOTFOUND") ||
     errorMessage.includes("network") ||
     errorMessage.includes("rate_limit_exceeded") ||
-    errorMessage.includes("Empty Gemini") ||
     errorMessage.includes("Empty OpenAI") ||
     errorMessage.includes("Invalid JSON") ||
-    errorMessage.includes("Invalid Gemini response") ||
     errorMessage.includes("Invalid OpenAI response") ||
     errorMessage.includes("Invalid vertical_match") ||
     errorMessage.includes("Invalid reasoning") ||

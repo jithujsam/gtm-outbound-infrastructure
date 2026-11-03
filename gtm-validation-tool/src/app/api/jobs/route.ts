@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getEmailRunStats } from "@/lib/jobs";
+import { fetchRunStats } from "@/lib/run-stats";
 
 export async function GET(_request: NextRequest) {
   const supabase = await createClient();
@@ -31,11 +32,6 @@ export async function GET(_request: NextRequest) {
 
   const enriched = await Promise.all(
     (jobs ?? []).map(async (job: any) => {
-      const { data: statsRow } = await supabase.rpc(
-        "get_validation_run_stats",
-        { p_job_id: job.id } as any
-      );
-      const row = (statsRow as any)?.[0];
       let emailRunStats = null;
       if (job.type === "email") {
         emailRunStats = await getEmailRunStats(supabase, job.id);
@@ -45,23 +41,7 @@ export async function GET(_request: NextRequest) {
         ...job,
         projectName: job.projects?.name ?? null,
         emailRunStats,
-        runStats: row
-          ? {
-              leadsRequested: Number(row.leads_requested ?? 0),
-              leadsProcessed: Number(row.leads_processed ?? 0),
-              successful: Number(row.successful ?? 0),
-              failed: Number(row.failed ?? 0),
-              matched: Number(row.matched ?? 0),
-              noMatch: Number(row.no_match ?? 0),
-              apiRequests: Number(row.api_requests ?? 0),
-              inputTokens: row.input_tokens == null ? null : Number(row.input_tokens),
-              cachedInputTokens: row.cached_input_tokens == null ? null : Number(row.cached_input_tokens),
-              outputTokens: row.output_tokens == null ? null : Number(row.output_tokens),
-              totalTokens: row.total_tokens == null ? null : Number(row.total_tokens),
-              totalCost: row.total_cost == null ? null : Number(row.total_cost),
-              totalDurationMs: Number(row.total_duration_ms ?? 0),
-            }
-          : null,
+        runStats: await fetchRunStats(supabase, job.id),
       };
     })
   );

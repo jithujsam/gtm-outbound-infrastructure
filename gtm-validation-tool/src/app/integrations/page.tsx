@@ -16,7 +16,7 @@ const LLM_PROVIDERS = [
 
 export default function IntegrationsPage() {
   const [llmApiKey, setLlmApiKey] = useState("");
-  const [llmProvider, setLlmProvider] = useState("gemini");
+  const [llmProvider, setLlmProvider] = useState("openai");
   const [clearoutApiKey, setClearoutApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);

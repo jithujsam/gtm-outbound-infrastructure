@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { VARIABLE_OPTIONS } from "@/lib/validation/variables";
-import { getIcpPrompt } from "@/app/settings/actions";
+import { getIcpPrompt, saveIcpPrompt } from "@/app/settings/actions";
 import { toast } from "sonner";
 import { formatCost, formatTokens, formatDuration, type RunStats } from "@/lib/format";
 
@@ -55,9 +54,6 @@ export function IcpValidationDialog({
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [validating, setValidating] = useState(false);
-  const [showVariables, setShowVariables] = useState(false);
-  const [variableFilter, setVariableFilter] = useState("");
-  const [selectedVarIndex, setSelectedVarIndex] = useState(0);
   const [progress, setProgress] = useState<ProgressState | null>(null);
   const [activity, setActivity] = useState<ActivityItem[]>([]);
   const [runStats, setRunStats] = useState<RunStats | null>(null);
@@ -65,14 +61,7 @@ export function IcpValidationDialog({
   const [model, setModel] = useState(ICP_MODEL);
   const [temperature, setTemperature] = useState("0.2");
   const [maxTokens, setMaxTokens] = useState("512");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const seenLeadIds = useRef<Set<string>>(new Set());
-
-  const filteredVariables = VARIABLE_OPTIONS.filter(
-    (v) =>
-      v.variable.toLowerCase().includes(variableFilter.toLowerCase()) ||
-      v.label.toLowerCase().includes(variableFilter.toLowerCase())
-  );
 
   useEffect(() => {
     if (!open) return;
@@ -100,84 +89,6 @@ export function IcpValidationDialog({
     };
   }, [open, projectId]);
 
-  useEffect(() => {
-    setSelectedVarIndex(0);
-  }, [variableFilter]);
-
-  const insertVariable = useCallback(
-    (variable: string) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-
-      const start = ta.selectionStart;
-      const end = ta.selectionEnd;
-
-      const before = prompt.slice(0, start);
-      const after = prompt.slice(end);
-
-      const slashIndex = before.lastIndexOf("/", start);
-      const newBefore =
-        slashIndex >= 0
-          ? before.slice(0, slashIndex) + variable
-          : before + variable;
-
-      const newPrompt = newBefore + after;
-      setPrompt(newPrompt);
-      setShowVariables(false);
-      setVariableFilter("");
-
-      requestAnimationFrame(() => {
-        ta.focus();
-        const newCursor = newBefore.length;
-        ta.setSelectionRange(newCursor, newCursor);
-      });
-    },
-    [prompt]
-  );
-
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (showVariables) {
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          setSelectedVarIndex((prev) =>
-            Math.min(prev + 1, filteredVariables.length - 1)
-          );
-        } else if (e.key === "ArrowUp") {
-          e.preventDefault();
-          setSelectedVarIndex((prev) => Math.max(prev - 1, 0));
-        } else if (e.key === "Enter") {
-          e.preventDefault();
-          if (filteredVariables[selectedVarIndex]) {
-            insertVariable(filteredVariables[selectedVarIndex].variable);
-          }
-        } else if (e.key === "Escape") {
-          e.preventDefault();
-          setShowVariables(false);
-          setVariableFilter("");
-        }
-      }
-    },
-    [showVariables, filteredVariables, selectedVarIndex, insertVariable]
-  );
-
-  const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const value = e.target.value;
-    const cursor = e.target.selectionStart;
-    setPrompt(value);
-
-    const beforeCursor = value.slice(0, cursor);
-    const lastSlash = beforeCursor.lastIndexOf("/");
-    const afterSlash = beforeCursor.slice(lastSlash + 1);
-
-    if (lastSlash >= 0 && !afterSlash.includes(" ") && !afterSlash.includes("\n")) {
-      setShowVariables(true);
-      setVariableFilter(afterSlash);
-    } else {
-      setShowVariables(false);
-      setVariableFilter("");
-    }
-  };
 
   const fetchJobDetail = useCallback(async (jobId: string) => {
     const res = await fetch(`/api/jobs/${jobId}/detail`);
@@ -243,14 +154,21 @@ export function IcpValidationDialog({
     seenLeadIds.current = new Set();
 
     try {
+      // Persist the edited criteria so the next run starts from them.
+      // (Nothing saved the prompt before, so edits were lost on reopen.)
+      const saved = await saveIcpPrompt(projectId, prompt);
+      if (!saved.success) toast.error(`Prompt not saved: ${saved.error ?? "unknown error"}`);
+
+      const parsedTemperature = parseFloat(temperature);
+      const parsedMaxTokens = parseInt(maxTokens, 10);
       const body: any = {
         type: "icp",
         mode: all ? "continuous" : "selected",
         prompt,
         provider,
         model,
-        temperature: parseFloat(temperature) || 0.2,
-        maxTokens: parseInt(maxTokens, 10) || 512,
+        temperature: Number.isFinite(parsedTemperature) ? parsedTemperature : 0.2,
+        maxTokens: Number.isFinite(parsedMaxTokens) && parsedMaxTokens > 0 ? parsedMaxTokens : 512,
       };
       if (!all) body.leadIds = ids;
 
@@ -402,61 +320,14 @@ export function IcpValidationDialog({
               <div className="space-y-2 relative">
                 <label className="text-sm font-medium">Prompt</label>
                 <textarea
-                  ref={textareaRef}
                   className="w-full min-h-[140px] rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y font-mono"
                   value={prompt}
-                  onChange={handleTextareaChange}
-                  onKeyDown={handleKeyDown}
+                  onChange={(e) => setPrompt(e.target.value)}
                   disabled={validating}
                 />
-
-                {showVariables && filteredVariables.length > 0 && (
-                  <div className="absolute left-0 top-full z-50 mt-1 w-full sm:w-64 rounded-md border bg-popover p-1 shadow-md max-h-48 overflow-y-auto">
-                    {filteredVariables.map((v, i) => (
-                      <button
-                        key={v.variable}
-                        className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-xs text-left ${
-                          i === selectedVarIndex
-                            ? "bg-accent text-accent-foreground"
-                            : "hover:bg-muted"
-                        }`}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          insertVariable(v.variable);
-                        }}
-                      >
-                        <code className="text-[10px] px-1 py-0.5 rounded bg-muted font-mono">
-                          {v.variable}
-                        </code>
-                        <span className="text-muted-foreground">{v.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-1.5">
-                <span className="text-[11px] text-muted-foreground mr-1 self-center">
-                  Variables:
-                </span>
-                {VARIABLE_OPTIONS.slice(0, 8).map((v) => (
-                  <Badge
-                    key={v.variable}
-                    variant="outline"
-                    className="text-[10px] cursor-pointer hover:bg-muted px-1.5 py-0"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      insertVariable(v.variable);
-                    }}
-                  >
-                    {v.variable}
-                  </Badge>
-                ))}
-                {VARIABLE_OPTIONS.length > 8 && (
-                  <span className="text-[10px] text-muted-foreground self-center">
-                    +{VARIABLE_OPTIONS.length - 8} more
-                  </span>
-                )}
+                <p className="text-[11px] text-muted-foreground">
+                  These criteria are sent once per batch, followed by each lead&apos;s company data.
+                </p>
               </div>
             </>
           )}

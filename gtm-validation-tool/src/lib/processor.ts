@@ -1,24 +1,32 @@
 import { createClient } from "@/lib/supabase/server";
-import { callGemini, callGeminiBatch, type BatchLeadInput } from "@/lib/validation/gemini";
-import { callOpenAI, callOpenAIBatch, OPENAI_DEFAULT_MODEL } from "@/lib/validation/openai";
+import { callOpenAI, callOpenAIBatch, OPENAI_DEFAULT_MODEL, type BatchLeadInput } from "@/lib/validation/openai";
 import { ICP_SYSTEM_PROMPT, formatLeadForIcp, buildIcpUserPrompt } from "@/lib/validation/icp-prompt";
 import { createApiLog, updateApiLog } from "@/lib/api-logger";
 import { calculateCost, ProviderError, type ProviderUsage } from "@/lib/llm-pricing";
 import { classifyError, backoffDelay, shouldPauseJob } from "@/lib/retry";
 import { callClearout, parseClearout, ClearoutError, isClearoutProviderRateLimit, clearoutRateLimitResetAt } from "@/lib/clearout";
+import type { Json } from "@/types/database";
 import { clearoutTimeoutMs, DEFAULT_CLEAROUT_RPM, DEFAULT_CLEAROUT_TIMEOUT_SECONDS } from "@/lib/clearout-rate";
 
 const BATCH_SIZE = 10;
-const GEMINI_BATCH_SIZE = 5;
-const OPENAI_BATCH_SIZE = 3;
+const LLM_BATCH_SIZE = 3;
 const MAX_CONCURRENT = 2;
 const MAX_JOB_SIZE = 200;
+const DEFAULT_MAX_TOKENS_PER_LEAD = 512;
+
+// One /process request must finish inside the route's maxDuration (300s).
+// The email loop stops starting new items once this budget is used and lets
+// the client call /process again.
+const EMAIL_TIME_BUDGET_MS = 45_000;
+
+// A job in one of these states is never processed again.
+const TERMINAL_JOB_STATUSES = ["completed", "completed_with_errors", "failed", "cancelled"];
 
 export function getMaxJobSize(): number {
   return MAX_JOB_SIZE;
 }
 
-// Columns needed from leads for prompt resolution (from VARIABLE_MAP in variables.ts)
+// Lead columns sent to the model (see formatLeadForIcp in icp-prompt.ts)
 const LEAD_FIELDS_FOR_PROMPT =
   "id, full_name, company_name, email, industry, position, state, domain, employee_size, country, company_description, company_linkedin, linkedin_url, website";
 
@@ -48,7 +56,7 @@ export async function processJobBatch(
 
   if (!job) throw new Error("Job not found");
 
-  if (job.status === "completed" || job.status === "cancelled") {
+  if (TERMINAL_JOB_STATUSES.includes(job.status)) {
     return { processed: 0, matched: 0, errors: [], complete: true };
   }
 
@@ -62,13 +70,7 @@ export async function processJobBatch(
   const claimed = await claimBatch(supabase, jobId, BATCH_SIZE);
 
   if (claimed.length === 0) {
-    const { data: remaining } = await supabase
-      .from("validation_job_items")
-      .select("id", { count: "exact" })
-      .eq("job_id", jobId)
-      .in("status", ["pending", "processing"]);
-
-    if ((remaining?.length ?? 0) === 0) {
+    if ((await countOpenItems(supabase, jobId)) === 0) {
       await finalizeJob(supabase, jobId);
       return { processed: 0, matched: 0, errors: [], complete: true };
     }
@@ -100,15 +102,9 @@ export async function processJobBatch(
     }
   }
 
-  const provider = job.llm_provider ?? "gemini";
-  const model = job.model || (provider === "openai" ? OPENAI_DEFAULT_MODEL : "gemini-3.6-flash");
-  const isOpenAI = provider === "openai";
-  const llmOptions = {
-    temperature: job.temperature ?? undefined,
-    maxTokens: job.max_tokens ?? undefined,
-  };
-
-  const batchGroupSize = isOpenAI ? OPENAI_BATCH_SIZE : GEMINI_BATCH_SIZE;
+  // OpenAI is the only supported provider; Gemini support was removed.
+  const model = job.model || OPENAI_DEFAULT_MODEL;
+  const maxTokensPerLead = job.max_tokens ?? DEFAULT_MAX_TOKENS_PER_LEAD;
 
   let processed = 0;
   let matched = 0;
@@ -120,12 +116,12 @@ export async function processJobBatch(
     vertical_match: boolean;
     matched_vertical: string | null;
     reasoning: string;
-    ai_response: string;
+    ai_response: Json;
   }> = [];
 
   const batches: BatchLeadInput[][] = [];
-  for (let i = 0; i < batchInputs.length; i += batchGroupSize) {
-    batches.push(batchInputs.slice(i, i + batchGroupSize));
+  for (let i = 0; i < batchInputs.length; i += LLM_BATCH_SIZE) {
+    batches.push(batchInputs.slice(i, i + LLM_BATCH_SIZE));
   }
 
   const processBatchFn = async (batch: BatchLeadInput[]) => {
@@ -137,7 +133,7 @@ export async function processJobBatch(
       lead_id: null,
       job_id: job.id,
       job_item_id: null,
-      provider: provider as "gemini" | "openai",
+      provider: "openai",
       operation: "icp_validation_batch",
       status: "success",
       request_metadata: {
@@ -148,31 +144,27 @@ export async function processJobBatch(
     });
 
     try {
-      let usage: ProviderUsage | null = null;
+      // The token limit is per lead, so a batch of N leads gets N times the
+      // budget. A fixed limit for the whole batch truncated the JSON output.
+      const llmOptions = {
+        temperature: job.temperature ?? undefined,
+        maxTokens: maxTokensPerLead * batch.length,
+      };
+
+      let usage: ProviderUsage;
       let results: Array<{ leadId: string; vertical_match: boolean; matched_vertical: string | null; reasoning: string }>;
 
       if (batch.length === 1) {
-        const singleLeadId = batch[0].leadId;
-        if (isOpenAI) {
-          const call = await callOpenAI(
-            llmApiKey,
-            model,
-            ICP_SYSTEM_PROMPT,
-            buildIcpUserPrompt(prompt, [batch[0].leadBlock]),
-            llmOptions
-          );
-          usage = call.usage;
-          results = [{ leadId: singleLeadId, ...call.data }];
-        } else {
-          const result = await callGemini(
-            llmApiKey,
-            ICP_SYSTEM_PROMPT,
-            buildIcpUserPrompt(prompt, [batch[0].leadBlock]),
-            llmOptions
-          );
-          results = [{ leadId: singleLeadId, ...result }];
-        }
-      } else if (isOpenAI) {
+        const call = await callOpenAI(
+          llmApiKey,
+          model,
+          ICP_SYSTEM_PROMPT,
+          buildIcpUserPrompt(prompt, [batch[0].leadBlock]),
+          llmOptions
+        );
+        usage = call.usage;
+        results = [{ leadId: batch[0].leadId, ...call.data }];
+      } else {
         const call = await callOpenAIBatch(
           llmApiKey,
           model,
@@ -183,14 +175,6 @@ export async function processJobBatch(
         );
         usage = call.usage;
         results = call.data;
-      } else {
-        results = await callGeminiBatch(
-          llmApiKey,
-          ICP_SYSTEM_PROMPT,
-          prompt,
-          batch,
-          llmOptions
-        );
       }
 
       const resultMap = new Map(results.map((r) => [r.leadId, r]));
@@ -209,31 +193,33 @@ export async function processJobBatch(
           vertical_match: result.vertical_match,
           matched_vertical: result.matched_vertical,
           reasoning: result.reasoning,
-          ai_response: JSON.stringify(result),
+          // Passed as an object so the jsonb column stores JSON, not a
+          // JSON-encoded string.
+          ai_response: { ...result },
         });
 
         processed++;
         if (result.vertical_match) matched++;
       }
 
-      const cost = usage ? calculateCost(model, usage) : null;
+      const cost = calculateCost(model, usage);
 
       await updateApiLog(logId, {
         status: "success",
         duration_ms: Date.now() - startedAt,
         model,
-        request_id: usage?.requestId ?? null,
+        request_id: usage.requestId,
         leads_in_request: batch.length,
-        input_tokens: usage?.inputTokens ?? null,
-        cached_input_tokens: usage?.cachedInputTokens ?? null,
-        output_tokens: usage?.outputTokens ?? null,
-        total_tokens: usage?.totalTokens ?? null,
-        input_cost: cost?.inputCost ?? null,
-        cached_input_cost: cost?.cachedInputCost ?? null,
-        output_cost: cost?.outputCost ?? null,
-        total_cost: cost?.totalCost ?? null,
+        input_tokens: usage.inputTokens,
+        cached_input_tokens: usage.cachedInputTokens,
+        output_tokens: usage.outputTokens,
+        total_tokens: usage.totalTokens,
+        input_cost: cost.inputCost,
+        cached_input_cost: cost.cachedInputCost,
+        output_cost: cost.outputCost,
+        total_cost: cost.totalCost,
         response_metadata: { processed: batch.length },
-        raw_response: usage?.rawResponse ?? null,
+        raw_response: usage.rawResponse,
       });
     } catch (err: any) {
       const errorClass = classifyError(err.message);
@@ -284,35 +270,50 @@ export async function processJobBatch(
     }
   };
 
-  for (let i = 0; i < batches.length; i += MAX_CONCURRENT) {
+  let systemError: string | null = null;
+  for (let i = 0; i < batches.length && !systemError; i += MAX_CONCURRENT) {
     const concurrent = batches.slice(i, i + MAX_CONCURRENT);
-    try {
-      await Promise.all(concurrent.map((b) => processBatchFn(b)));
-    } catch (err: any) {
-      return { processed, matched, errors, complete: false, paused: true, pausedReason: err.message?.slice(0, 200) };
-    }
+    // allSettled, not all: a system error in one batch must not throw away
+    // the results the other batch already paid for.
+    const settled = await Promise.allSettled(concurrent.map((b) => processBatchFn(b)));
+    const rejected = settled.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (rejected) systemError = rejected.reason?.message?.slice(0, 200) ?? "System error";
   }
 
   // Atomic bulk write: single RPC call verifies lease ownership and writes all results
   if (allBatchResults.length > 0) {
-    await supabase.rpc("apply_icp_results", { p_updates: allBatchResults });
+    const { data: appliedCount, error: applyError } = await supabase.rpc("apply_icp_results", {
+      p_updates: allBatchResults,
+    });
+    if (applyError) {
+      // Items stay leased and are re-claimed after the lease expires.
+      errors.push(`Failed to save results: ${applyError.message.slice(0, 200)}`);
+      processed = 0;
+      matched = 0;
+    } else if (Number(appliedCount ?? 0) < allBatchResults.length) {
+      errors.push(
+        `${allBatchResults.length - Number(appliedCount ?? 0)} result(s) discarded because their lease expired`
+      );
+    }
   }
 
-  const { data: remaining } = await supabase
-    .from("validation_job_items")
-    .select("id", { count: "exact" })
-    .eq("job_id", jobId)
-    .in("status", ["pending", "processing"]);
-
-  if ((remaining?.length ?? 0) > 0) {
-    // Intermediate progress: recalculate counts without finalizing
+  if (systemError) {
     await recalculateJobProgress(supabase, jobId);
-  } else {
+    return { processed, matched, errors, complete: false, paused: true, pausedReason: systemError };
+  }
+
+  const openItems = await countOpenItems(supabase, jobId);
+
+  if (openItems === 0) {
     // All items done: finalize includes progress counts
     await finalizeJob(supabase, jobId);
+    return { processed, matched, errors: errors.slice(0, 5), complete: true };
   }
 
-  if (shouldPauseJob(job.failed_leads + batchFailures, job.completed_leads + processed)) {
+  // Intermediate progress: recalculate counts without finalizing
+  await recalculateJobProgress(supabase, jobId);
+
+  if (shouldPauseJob((job.failed_leads ?? 0) + batchFailures, (job.completed_leads ?? 0) + processed)) {
     await supabase
       .from("validation_jobs")
       .update({ status: "paused", error_message: "Auto-paused: failure rate exceeded 50%" })
@@ -320,7 +321,7 @@ export async function processJobBatch(
     return { processed, matched, errors: errors.slice(0, 5), complete: false, paused: true, pausedReason: "Auto-paused: failure rate exceeded 50%" };
   }
 
-  return { processed, matched, errors: errors.slice(0, 5), complete: (remaining?.length ?? 0) === 0 };
+  return { processed, matched, errors: errors.slice(0, 5), complete: false };
 }
 
 async function claimBatch(
@@ -364,7 +365,7 @@ export async function processEmailBatch(
 
   if (!job) throw new Error("Job not found");
 
-  if (job.status === "completed" || job.status === "cancelled") {
+  if (TERMINAL_JOB_STATUSES.includes(job.status)) {
     return { processed: 0, valid: 0, invalid: 0, errors: [], complete: true };
   }
 
@@ -416,7 +417,21 @@ export async function processEmailBatch(
   // first, wait for it, then claim exactly one item with a lease that covers
   // the configured timeout plus a small buffer. Throughput is governed by the
   // persisted slot reservation below, not by concurrency.
+  //
+  // The loop is bounded by EMAIL_TIME_BUDGET_MS so a single request never
+  // outlives the serverless function limit. Before this bound, one request
+  // tried to verify the whole job (200 leads at 3 rpm is ~66 minutes).
+  const loopStartedAt = Date.now();
+  let iterations = 0;
   while (true) {
+    // Always do at least one item, then stop starting new ones once the
+    // budget is used. Worst case for the last item is budget + one slot wait
+    // (<= 60s) + Clearout timeout (<= 120s), inside the route's maxDuration.
+    if (iterations > 0 && Date.now() - loopStartedAt > EMAIL_TIME_BUDGET_MS) {
+      break;
+    }
+    iterations++;
+
     let fireAt: Date;
     try {
       fireAt = await reserveClearoutRequestSlot(supabase, job.user_id, requestsPerMinute);
@@ -435,17 +450,8 @@ export async function processEmailBatch(
     const leaseSeconds = Math.ceil(timeoutMs / 1000) + 15;
     const claimed = await claimBatch(supabase, jobId, 1, leaseSeconds);
     if (claimed.length === 0) {
-      const { data: remaining } = await supabase
-        .from("validation_job_items")
-        .select("id", { count: "exact" })
-        .eq("job_id", jobId)
-        .in("status", ["pending", "processing"]);
-
-      if ((remaining?.length ?? 0) === 0) {
-        await finalizeJob(supabase, jobId);
-        return { processed, valid, invalid, errors, complete: true };
-      }
-      return { processed, valid, invalid, errors, complete: false };
+      // Nothing claimable right now (done, or remaining items are backing off).
+      break;
     }
 
     const item = claimed[0];
@@ -609,17 +615,14 @@ export async function processEmailBatch(
     else if (update.email_check === "Invalid") invalid++;
   }
 
-  const { data: remaining } = await supabase
-    .from("validation_job_items")
-    .select("id", { count: "exact" })
-    .eq("job_id", jobId)
-    .in("status", ["pending", "processing"]);
+  const openItems = await countOpenItems(supabase, jobId);
 
-  if ((remaining?.length ?? 0) > 0) {
-    await recalculateJobProgress(supabase, jobId);
-  } else {
+  if (openItems === 0) {
     await finalizeJob(supabase, jobId);
+    return { processed, valid, invalid, errors: errors.slice(0, 5), complete: true };
   }
+
+  await recalculateJobProgress(supabase, jobId);
 
   if (shouldPauseJob(failedLeads + batchFailures, completedLeads + processed)) {
     await supabase
@@ -629,7 +632,17 @@ export async function processEmailBatch(
     return { processed, valid, invalid, errors: errors.slice(0, 5), complete: false, paused: true, pausedReason: "Auto-paused: failure rate exceeded 50%" };
   }
 
-  return { processed, valid, invalid, errors: errors.slice(0, 5), complete: (remaining?.length ?? 0) === 0 };
+  return { processed, valid, invalid, errors: errors.slice(0, 5), complete: false };
+}
+
+async function countOpenItems(supabase: any, jobId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("validation_job_items")
+    .select("id", { count: "exact", head: true })
+    .eq("job_id", jobId)
+    .in("status", ["pending", "processing"]);
+  if (error) throw new Error(`Failed to count open items: ${error.message}`);
+  return count ?? 0;
 }
 
 async function reserveClearoutRequestSlot(

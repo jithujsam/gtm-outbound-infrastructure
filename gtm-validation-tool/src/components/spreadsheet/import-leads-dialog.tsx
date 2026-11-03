@@ -12,6 +12,8 @@ import { Button } from "@/components/ui/button";
 import { Upload, X, FileText } from "lucide-react";
 import { toast } from "sonner";
 
+const IMPORT_CHUNK_SIZE = 100;
+
 interface ImportLeadsDialogProps {
   projectId: string;
   open: boolean;
@@ -78,18 +80,34 @@ export function ImportLeadsDialog({
             website: row.website || row.Website || "",
           }));
 
-          const res = await fetch(`/api/projects/${projectId}/leads`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(leads),
-          });
-
-          if (!res.ok) throw new Error(await res.text());
-          const json = await res.json();
-          toast.success(`Imported ${json.length} leads`);
-          onImported();
-          onOpenChange(false);
-          setImporting(false);
+          // Errors thrown in this async callback are not caught by the outer
+          // try/catch, so handle them here; otherwise the dialog stayed in the
+          // "importing" state forever. Rows are sent in chunks to keep each
+          // request body small.
+          let imported = 0;
+          try {
+            for (let i = 0; i < leads.length; i += IMPORT_CHUNK_SIZE) {
+              const res = await fetch(`/api/projects/${projectId}/leads`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(leads.slice(i, i + IMPORT_CHUNK_SIZE)),
+              });
+              if (!res.ok) throw new Error(await res.text());
+              const json = await res.json();
+              imported += json.length;
+            }
+            toast.success(`Imported ${imported} leads`);
+            onOpenChange(false);
+          } catch (err: any) {
+            toast.error(
+              imported > 0
+                ? `Import stopped after ${imported} leads: ${err.message}`
+                : `Import failed: ${err.message}`
+            );
+          } finally {
+            if (imported > 0) onImported();
+            setImporting(false);
+          }
         },
         error: () => {
           toast.error("Failed to parse CSV during import");

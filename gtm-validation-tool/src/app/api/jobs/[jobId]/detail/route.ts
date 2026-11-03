@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getEmailRunStats } from "@/lib/jobs";
+import { toRunStats } from "@/lib/run-stats";
 
 export async function GET(
   _request: NextRequest,
@@ -65,22 +66,6 @@ export async function GET(
     requests: requestsRes.data ?? [],
     items: itemsWithLeads,
     emailRunStats,
-    runStats: statsRow
-      ? {
-          leadsRequested: Number(statsRow.leads_requested ?? 0),
-          leadsProcessed: Number(statsRow.leads_processed ?? 0),
-          successful: Number(statsRow.successful ?? 0),
-          failed: Number(statsRow.failed ?? 0),
-          matched: Number(statsRow.matched ?? 0),
-          noMatch: Number(statsRow.no_match ?? 0),
-          apiRequests: Number(statsRow.api_requests ?? 0),
-          inputTokens: statsRow.input_tokens == null ? null : Number(statsRow.input_tokens),
-          cachedInputTokens: statsRow.cached_input_tokens == null ? null : Number(statsRow.cached_input_tokens),
-          outputTokens: statsRow.output_tokens == null ? null : Number(statsRow.output_tokens),
-          totalTokens: statsRow.total_tokens == null ? null : Number(statsRow.total_tokens),
-          totalCost: statsRow.total_cost == null ? null : Number(statsRow.total_cost),
-          totalDurationMs: Number(statsRow.total_duration_ms ?? 0),
-        }
-      : null,
+    runStats: toRunStats(statsRow),
   });
 }

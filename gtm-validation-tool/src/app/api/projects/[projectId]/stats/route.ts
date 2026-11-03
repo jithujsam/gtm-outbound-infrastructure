@@ -12,41 +12,59 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: leadStatsRaw, error: leadErr } = await supabase
-    .from("leads")
-    .select("vertical_match, email_check, safe_to_send")
-    .eq("project_id", projectId)
-    .eq("user_id", user.id);
+  // Counted in the database: fetching rows and filtering in JS silently
+  // stopped at PostgREST's 1000-row limit, so large projects showed wrong totals.
+  const countLeads = async (apply: (q: any) => any = (q) => q): Promise<number> => {
+    const { count, error } = await apply(
+      supabase
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("user_id", user.id)
+    );
+    if (error) throw new Error(error.message);
+    return count ?? 0;
+  };
 
-  if (leadErr) {
-    return NextResponse.json({ error: leadErr.message }, { status: 500 });
+  let counts: number[];
+  try {
+    counts = await Promise.all([
+      countLeads(),
+      countLeads((q) => q.not("vertical_match", "is", null)),
+      countLeads((q) => q.eq("vertical_match", true)),
+      countLeads((q) => q.eq("vertical_match", false)),
+      countLeads((q) => q.not("email_check", "is", null)),
+      countLeads((q) => q.eq("email_check", "Valid")),
+      countLeads((q) => q.eq("email_check", "Invalid")),
+      countLeads((q) => q.eq("email_check", "Unknown")),
+      countLeads((q) => q.eq("safe_to_send", true)),
+    ]);
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-
-  const leads = (leadStatsRaw ?? []) as any[];
-  const total = leads.length;
-  const icpValidated = leads.filter((l) => l.vertical_match !== null).length;
-  const icpMatch = leads.filter((l) => l.vertical_match === true).length;
-  const icpNoMatch = leads.filter((l) => l.vertical_match === false).length;
+  const [total, icpValidated, icpMatch, icpNoMatch, emailValidated, emailValid, emailInvalid, emailUnknown, safeToSend] = counts;
   const icpNotValidated = total - icpValidated;
-  const emailValidated = leads.filter((l) => l.email_check !== null).length;
-  const emailValid = leads.filter((l) => l.email_check === "Valid").length;
-  const emailInvalid = leads.filter((l) => l.email_check === "Invalid").length;
-  const emailUnknown = leads.filter((l) => l.email_check === "Unknown").length;
   const emailNotValidated = total - emailValidated;
-  const safeToSend = leads.filter((l) => l.safe_to_send === true).length;
 
-  // Usage aggregation from api_operation_logs for this project's jobs.
-  const { data: usageRowsRaw, error: usageErr } = await supabase
-    .from("api_operation_logs")
-    .select("status, input_tokens, cached_input_tokens, output_tokens, total_tokens, total_cost, duration_ms")
-    .eq("project_id", projectId)
-    .eq("user_id", user.id);
-
-  if (usageErr) {
-    return NextResponse.json({ error: usageErr.message }, { status: 500 });
+  // Usage aggregation from api_operation_logs, read in pages for the same reason.
+  const LOG_PAGE = 1000;
+  const usageRowsRaw: any[] = [];
+  for (let from = 0; ; from += LOG_PAGE) {
+    const { data, error: usageErr } = await supabase
+      .from("api_operation_logs")
+      .select("status, input_tokens, cached_input_tokens, output_tokens, total_tokens, total_cost, duration_ms")
+      .eq("project_id", projectId)
+      .eq("user_id", user.id)
+      .order("id")
+      .range(from, from + LOG_PAGE - 1);
+    if (usageErr) {
+      return NextResponse.json({ error: usageErr.message }, { status: 500 });
+    }
+    usageRowsRaw.push(...(data ?? []));
+    if ((data?.length ?? 0) < LOG_PAGE) break;
   }
 
-  const logs = (usageRowsRaw ?? []) as any[];
+  const logs = usageRowsRaw;
   const totalSuccessfulValidations = logs.filter((l) => l.status === "success").length;
   const totalFailedValidations = logs.filter((l) => l.status !== "success").length;
   const totalApiRequests = logs.length;

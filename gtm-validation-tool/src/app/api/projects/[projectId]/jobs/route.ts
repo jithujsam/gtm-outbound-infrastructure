@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createValidationJob } from "@/lib/jobs";
 import { getMaxJobSize } from "@/lib/processor";
+import { OPENAI_MODELS } from "@/lib/validation/openai";
+import { fetchRunStats } from "@/lib/run-stats";
 
 export async function GET(
   _request: NextRequest,
@@ -29,33 +31,10 @@ export async function GET(
   // acceptable and keeps the run aggregation in one place.
   const jobsList = (jobs ?? []) as any[];
   const enriched = await Promise.all(
-    jobsList.map(async (job: any) => {
-      const { data: statsRow } = await supabase.rpc(
-        "get_validation_run_stats",
-        { p_job_id: job.id } as any
-      );
-      const row = (statsRow as any)?.[0];
-      return {
-        ...job,
-        runStats: row
-          ? {
-              leadsRequested: Number(row.leads_requested ?? 0),
-              leadsProcessed: Number(row.leads_processed ?? 0),
-              successful: Number(row.successful ?? 0),
-              failed: Number(row.failed ?? 0),
-              matched: Number(row.matched ?? 0),
-              noMatch: Number(row.no_match ?? 0),
-              apiRequests: Number(row.api_requests ?? 0),
-              inputTokens: row.input_tokens == null ? null : Number(row.input_tokens),
-              cachedInputTokens: row.cached_input_tokens == null ? null : Number(row.cached_input_tokens),
-              outputTokens: row.output_tokens == null ? null : Number(row.output_tokens),
-              totalTokens: row.total_tokens == null ? null : Number(row.total_tokens),
-              totalCost: row.total_cost == null ? null : Number(row.total_cost),
-              totalDurationMs: Number(row.total_duration_ms ?? 0),
-            }
-          : null,
-      };
-    })
+    jobsList.map(async (job: any) => ({
+      ...job,
+      runStats: await fetchRunStats(supabase, job.id),
+    }))
   );
 
   return NextResponse.json(enriched);
@@ -89,11 +68,20 @@ export async function POST(
     return NextResponse.json({ error: "Invalid body" }, { status: 400 });
   }
 
-  if (!body.type || !body.mode) {
+  if (!["icp", "email"].includes(body.type) || !["selected", "continuous"].includes(body.mode)) {
     return NextResponse.json(
-      { error: "type and mode are required" },
+      { error: "type must be icp or email, and mode must be selected or continuous" },
       { status: 400 }
     );
+  }
+
+  if (body.type === "icp") {
+    if (body.provider && body.provider !== "openai") {
+      return NextResponse.json({ error: "OpenAI is the only supported provider" }, { status: 400 });
+    }
+    if (body.model && !(OPENAI_MODELS as readonly string[]).includes(body.model)) {
+      return NextResponse.json({ error: `Unsupported model: ${body.model}` }, { status: 400 });
+    }
   }
 
   let leadIds: string[];
@@ -152,7 +140,7 @@ export async function POST(
       leadIds,
       prompt: body.prompt,
       model: body.model,
-      llmProvider: body.provider,
+      llmProvider: body.type === "icp" ? "openai" : undefined,
       temperature: body.temperature,
       maxTokens: body.maxTokens,
     });
