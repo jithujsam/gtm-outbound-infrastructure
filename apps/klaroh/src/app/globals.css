@@ -1,0 +1,611 @@
+@import "tailwindcss";
+
+/* ═══════════════════════════════════════════════════════════════════
+   Klaroh design tokens
+   Everything visual (colour, type, radius, spacing, elevation) is
+   defined here once and consumed as Tailwind utilities
+   (bg-primary, text-on-surface-variant, rounded-lg, max-w-page, …).
+   Components should never hard-code hex values — use a token, or add one.
+   ═══════════════════════════════════════════════════════════════════ */
+@theme {
+  /* ── Brand ─────────────────────────────────────────────────────────
+     Two greens, two jobs:
+       primary           #003E2A  actions + chrome (buttons, sidebar, focus)
+       primary-container #0F573E  brand green for data (charts, meters, "good")
+     Same family; primary is the deeper step.                          */
+  --color-primary: #003E2A;
+  --color-on-primary: #FFFFFF;
+  --color-primary-container: #0F573E;
+  --color-on-primary-container: #89CBAB;
+  --color-primary-fixed: #ADF1CF;
+  --color-primary-fixed-dim: #92D4B4;
+  --color-on-primary-fixed: #002114;
+  --color-on-primary-fixed-variant: #045139;
+
+  /* ── Surfaces ──────────────────────────────────────────────────── */
+  --color-background: #F8F9FF;
+  --color-surface: #F8F9FF;
+  --color-surface-container-lowest: #FFFFFF;
+  --color-surface-container-low: #EFF4FF;
+  --color-surface-container: #E5EEFF;
+  --color-surface-container-high: #DCE9FF;
+  --color-surface-container-highest: #D3E4FE;
+
+  /* ── Text ──────────────────────────────────────────────────────────
+     on-surface          primary text
+     on-surface-variant  secondary text, labels, icons
+     outline             muted text (placeholders, captions on white)    */
+  --color-on-surface: #0B1C30;
+  --color-on-surface-variant: #404943;
+
+  /* ── Borders ───────────────────────────────────────────────────────
+     outline-variant  default border (use /40–/60 for hairlines)
+     outline          strong border / muted text                        */
+  --color-outline-variant: #BFC9C1;
+  --color-outline: #707973;
+
+  /* ── Secondary / tertiary (supporting hues) ────────────────────── */
+  --color-secondary: #545F73;
+  --color-secondary-container: #D5E0F8;
+  --color-on-secondary-container: #586377;
+  --color-tertiary-fixed: #E0E3E5;
+  --color-on-tertiary-fixed: #191C1E;
+
+  /* ── Status ────────────────────────────────────────────────────────
+     Each tone = solid (icons, bars, text on light) + container (chip
+     background) + on-container (text on the container).
+     critical is the semantic name for error; both resolve identically.  */
+  --color-success: #0F573E;
+  --color-success-container: #ADF1CF;
+  --color-on-success-container: #045139;
+
+  --color-warning: #B45309;
+  --color-warning-container: #FEF3C7;
+  --color-on-warning-container: #78350F;
+
+  --color-error: #BA1A1A;
+  --color-on-error: #FFFFFF;
+  --color-error-container: #FFDAD6;
+  --color-on-error-container: #93000A;
+  --color-critical: var(--color-error);
+  --color-critical-container: var(--color-error-container);
+  --color-on-critical-container: var(--color-on-error-container);
+
+  --color-info: #1F5FA6;
+  --color-info-container: #D8E6F8;
+  --color-on-info-container: #123A63;
+
+  /* ── Charts ────────────────────────────────────────────────────────
+     chart-1 is the default single-series colour. Use 2–6 only when a
+     chart genuinely needs several series, in order.                    */
+  --color-chart-1: #0F573E;
+  --color-chart-2: #4A7C7E;
+  --color-chart-3: #6B5B95;
+  --color-chart-4: #B45309;
+  --color-chart-5: #1F5FA6;
+  --color-chart-6: #707973;
+  --color-chart-grid: #E5EEFF;
+  --color-chart-axis: #404943;
+  --color-chart-axis-line: #BFC9C1;
+  --color-chart-reference: #707973;
+  --color-chart-cursor: rgba(15, 87, 62, 0.06);
+
+  /* ── Radius ────────────────────────────────────────────────────────
+     sm 4px  chips, small marks      lg 8px   controls, cards, panels
+     md 6px  inline buttons          xl 12px  large modals              */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+
+  /* ── Spacing ───────────────────────────────────────────────────────
+     4px base unit (Tailwind's `--spacing`): p-1 = 4px, p-4 = 16px.
+     Page gutter 16 / 24 / 32px (PageContainer), card padding 16px
+     (px-4 py-3 headers, p-4 bodies), gaps 8 / 12 / 16px.              */
+  --spacing: 0.25rem;
+  --container-page: 90rem; /* 1440px — max-w-page */
+
+  /* ── Elevation ─────────────────────────────────────────────────────
+     Cards are flat (border only). Shadows are for overlays.            */
+  --shadow-modal: 0 8px 32px rgba(11, 28, 48, 0.10);
+
+  /* ── Fonts ─────────────────────────────────────────────────────────
+     Inter: UI, body, tables, numbers.  Instrument Serif: page titles.  */
+  --font-sans: var(--font-inter), "Inter", system-ui, sans-serif;
+  --font-serif: var(--font-instrument), "Instrument Serif", Georgia, serif;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--color-background);
+}
+
+body {
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+  font-size: 0.875rem; /* 14px body */
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Type scale
+     page title    Instrument Serif italic, 28px → 32px (md+)
+     section title Inter 600, 16px
+     body          Inter 400, 14px
+     table cell    Inter 400, 13px, tabular numerals
+     caption       Inter 400/500, 12px — the minimum size anywhere
+     stat          Inter 600, 28px, tabular numerals (headline numbers)
+   Weights loaded: Inter 400 / 500 / 600; Instrument Serif 400.
+   Use font-normal / font-medium / font-semibold only.
+   ═══════════════════════════════════════════════════════════════════ */
+@utility type-page-title {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.75rem;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  @media (min-width: 48rem) {
+    font-size: 2rem;
+  }
+}
+
+@utility type-section {
+  font-family: var(--font-sans);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 1rem;
+  line-height: 1.375;
+}
+
+@utility type-stat {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  font-size: 1.75rem;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@utility type-table {
+  font-size: 0.8125rem; /* 13px */
+  line-height: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility type-caption {
+  font-size: 0.75rem; /* 12px — never smaller */
+  line-height: 1.25;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Controls — buttons and form fields
+   Heights: button 36px (.btn-sm 32px), input 40px (.input-sm 36px).
+   On touch devices every control grows to a 44px target.
+   Defined in `@layer components`, so Tailwind utilities (h-9, px-3, w-full)
+   override them cleanly.
+   ═══════════════════════════════════════════════════════════════════ */
+@layer components {
+  /* ── Form fields ───────────────────────────────────────────────── */
+  .label {
+    display: block;
+    margin-bottom: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    color: var(--color-on-surface-variant);
+  }
+  .field-hint {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--color-on-surface-variant);
+  }
+  .field-error {
+    margin-top: 0.25rem;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    color: var(--color-error);
+  }
+
+  .input,
+  .select,
+  .textarea {
+    font-family: var(--font-sans);
+    width: 100%;
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-outline-variant);
+    background-color: var(--color-surface-container-lowest);
+    padding: 0 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: var(--color-on-surface);
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .input,
+  .select {
+    height: 2.5rem; /* 40px */
+  }
+  .input::placeholder,
+  .textarea::placeholder {
+    color: var(--color-outline);
+  }
+  .textarea {
+    min-height: 5.5rem;
+    padding: 0.5rem 0.75rem;
+    resize: vertical;
+  }
+  .input-sm {
+    height: 2.25rem; /* 36px — matches .btn, for inline filter rows */
+  }
+  .input:focus,
+  .select:focus,
+  .textarea:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 25%, transparent);
+  }
+  .input:disabled,
+  .select:disabled,
+  .textarea:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .input-error {
+    border-color: var(--color-error);
+  }
+  .input-error:focus {
+    border-color: var(--color-error);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-error) 25%, transparent);
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────
+     One footprint: 36px tall, px-4, Inter 14px / 500, rounded-lg.
+     Variants change colour only. Layout modifiers (w-full, flex-1, …)
+     stay as utilities.                                                 */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.25rem; /* 36px */
+    padding: 0 1rem;
+    font-family: var(--font-sans);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    border-radius: var(--radius-lg);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease,
+      border-color 0.15s ease, transform 0.15s ease;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .btn:focus-visible,
+  .input:focus-visible,
+  .select:focus-visible,
+  .textarea:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-primary) 88%, black);
+  }
+  .btn-secondary {
+    border-color: var(--color-outline-variant);
+    background-color: var(--color-surface-container-lowest);
+    color: var(--color-on-surface);
+  }
+  .btn-secondary:hover:not(:disabled) {
+    background-color: var(--color-surface-container);
+  }
+  .btn-ghost {
+    background-color: transparent;
+    color: var(--color-on-surface-variant);
+  }
+  .btn-ghost:hover:not(:disabled) {
+    background-color: var(--color-surface-container);
+    color: var(--color-on-surface);
+  }
+  /* Outline destructive — the quiet "Remove" / "Disconnect" action. */
+  .btn-destructive {
+    border-color: var(--color-outline-variant);
+    background-color: var(--color-surface-container-lowest);
+    color: var(--color-error);
+  }
+  .btn-destructive:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-error) 10%, transparent);
+  }
+  /* Solid destructive — the confirm step of a delete. */
+  .btn-danger {
+    background-color: var(--color-error);
+    color: var(--color-on-error);
+  }
+  .btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-error) 88%, black);
+  }
+  .btn-danger:focus-visible {
+    outline-color: var(--color-error);
+  }
+
+  .btn-sm {
+    height: 2rem; /* 32px */
+    padding: 0 0.75rem;
+    font-size: 0.8125rem;
+  }
+  .btn-icon {
+    width: 2.25rem;
+    padding: 0;
+  }
+  .btn-icon.btn-sm {
+    width: 2rem;
+  }
+
+  @media (pointer: coarse) {
+    .btn,
+    .input,
+    .select {
+      min-height: 2.75rem; /* 44px touch target */
+    }
+    .btn-icon {
+      min-width: 2.75rem;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Motion
+   Short, functional, and never decorative. Three durations:
+     150ms  state changes — hover, colour, menus and dropdowns opening
+     160ms  dialogs entering (fade + 8px rise)
+     220ms  sheets and panels that travel further (mobile "More" sheet)
+     300ms  layout — the sidebar collapsing and the page margin following it
+   framer-motion components use the same numbers; MotionConfig
+   (reducedMotion="user") in DashboardLayout turns their movement off for
+   people who ask for less motion, and the rules below do the same for CSS.
+   ═══════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: no-preference) {
+  /* Dialog entrance: a short fade/rise; its backdrop fades with it. */
+  .modal-panel {
+    animation: modal-in 0.16s ease-out;
+  }
+  .modal-backdrop {
+    animation: fade-in 0.16s ease-out;
+  }
+  /* Dropdowns and popover menus: a quick fade with a 4px drop. */
+  .dropdown-panel {
+    animation: dropdown-in 0.15s ease-out;
+  }
+  /* Expanding a conversation (<details>): the body fades in. */
+  details[open] > .details-body {
+    animation: fade-in 0.15s ease-out;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Landing page (public "/"). Art direction: an instrument panel on a forest floor.
+   Display type is Instrument Serif (the app's own page-title face) with italic emphasis in
+   the same family; UI and body copy are Geist. One accent (mint, --color-primary-fixed) on
+   two grounds: deep forest ink (.lp-ink) and cool sage paper (.lp-paper). Radius rule:
+   interactive elements are pills, containers and product frames are 16px. Hairline rules
+   replace card grids; "unavailable" data is drawn hatched (.lp-hatch).
+   ═══════════════════════════════════════════════════════════════════ */
+@utility lp-display {
+  font-family: var(--font-instrument), serif;
+  font-weight: 400;
+  font-size: clamp(3.1rem, 8.2vw, 7.25rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+@utility lp-h2 {
+  font-family: var(--font-instrument), serif;
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5.4vw, 4.5rem);
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+@utility lp-h3 {
+  font-family: var(--font-geist), var(--font-sans);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+@utility lp-lede {
+  font-size: clamp(1.0625rem, 1.4vw, 1.25rem);
+  line-height: 1.55;
+}
+/* Motion tokens shared by CSS and framer-motion (EASE in motion.tsx is the same curve). Nonessential
+   movement only runs when the visitor has not asked for reduced motion. */
+:root { --lp-ease: cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes lp-rise {
+  from { opacity: 0; transform: translateY(14px); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero copy: pure CSS, so it runs before hydration and still shows with JavaScript off. */
+  .lp-rise { animation: lp-rise 0.6s var(--lp-ease) both; animation-delay: var(--d, 0s); }
+  /* FAQ: <details> animates its own answer box (Chrome, Edge and recent Safari/Firefox support
+     ::details-content). Browsers without it open and close instantly, as before. */
+  :root { interpolate-size: allow-keywords; }
+  .lp-faq::details-content {
+    block-size: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: block-size 0.38s var(--lp-ease), opacity 0.28s var(--lp-ease), content-visibility 0.38s allow-discrete;
+    transition-behavior: allow-discrete;
+  }
+  .lp-faq[open]::details-content { block-size: auto; opacity: 1; }
+}
+.lp-link { transition: color 0.2s var(--lp-ease), opacity 0.2s var(--lp-ease); }
+.lp-link:active { opacity: 0.65; }
+.lp-ink {
+  background: #04251A;
+  color: #fff;
+}
+.lp-paper {
+  background: #F2F5EF;
+}
+/* Single spotlight behind the product on wide screens: it lifts the interface, nothing else. */
+.lp-spot {
+  background: #04251A;
+  color: #fff;
+}
+@media (min-width: 1280px) {
+  .lp-spot {
+    background: radial-gradient(60% 55% at 62% 100%, color-mix(in srgb, var(--color-primary-container) 70%, transparent), transparent 70%), #04251A;
+  }
+}
+/* "Not available": diagonal hatching reads as an intentionally empty field. */
+.lp-hatch {
+  background-image: repeating-linear-gradient(135deg, transparent 0 9px, color-mix(in srgb, var(--color-primary) 7%, transparent) 9px 10px);
+}
+.lp-frame-shadow {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 50px 100px -30px rgba(0, 0, 0, 0.55), 0 18px 40px -20px rgba(0, 0, 0, 0.4);
+}
+@layer components {
+  .lp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding: 0 1.5rem;
+    border-radius: 9999px;
+    border: 1px solid transparent;
+    font-family: var(--font-geist), var(--font-sans);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .lp-btn:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; }
+  .lp-btn-sm { height: 2.5rem; padding: 0 1rem; font-size: 0.875rem; }
+  @media (max-width: 767px) { .lp-btn-sm { height: 2.75rem; padding: 0 0.875rem; } }
+  .lp-btn-primary {
+    background: var(--color-primary);
+    color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 24px -12px color-mix(in srgb, var(--color-primary) 80%, transparent);
+  }
+  .lp-btn-primary:hover { background: color-mix(in srgb, var(--color-primary) 86%, #fff); }
+  .lp-btn-mint { background: var(--color-primary-fixed); color: #04251A; }
+  .lp-btn-mint:hover { background: #fff; }
+  .lp-btn-line { background: transparent; border-color: rgba(255, 255, 255, 0.35); color: #fff; }
+  .lp-btn-line:hover { background: rgba(255, 255, 255, 0.1); border-color: rgba(255, 255, 255, 0.6); }
+  .lp-btn-lg { height: 3.5rem; padding: 0 2rem; font-size: 1rem; }
+  .lp-btn-light { background: #fff; color: var(--color-primary); }
+  .lp-btn-light:hover { background: var(--color-primary-fixed); }
+  .lp-btn-ghost {
+    background: rgba(255, 255, 255, 0.7);
+    border-color: var(--color-outline-variant);
+    color: var(--color-on-surface);
+  }
+  .lp-btn-ghost:hover { background: #fff; border-color: var(--color-outline); }
+}
+html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+@keyframes dropdown-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Less motion: looping decoration (pulse, ping) stops; loading spinners keep
+   turning because they carry meaning; button press-scale is dropped. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse,
+  .animate-ping {
+    animation: none;
+  }
+  .btn:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Resources (public "/resources"): long-form reading on the landing page's paper ground.
+   Prose is written as plain elements in src/content/resources and styled here.
+   ═══════════════════════════════════════════════════════════════════ */
+.rp {
+  font-family: var(--font-geist), var(--font-sans);
+  font-size: 1.0625rem;
+  line-height: 1.75;
+  color: var(--color-on-surface);
+}
+.rp > p, .rp > ul, .rp > ol, .rp > aside, .rp > .rp-table { margin-top: 1.1rem; }
+.rp h3 {
+  margin-top: 2rem;
+  font-size: 1.1875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+.rp h3 + * { margin-top: 0.6rem; }
+.rp ul, .rp ol { padding-left: 1.4rem; }
+.rp ul { list-style: disc; }
+.rp ol { list-style: decimal; }
+.rp li { margin-top: 0.5rem; padding-left: 0.2rem; }
+.rp li::marker { color: var(--color-primary-container); }
+.rp a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+  text-underline-offset: 3px;
+  overflow-wrap: anywhere;
+}
+.rp a:hover { text-decoration-color: currentColor; }
+.rp a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 2px; }
+.rp strong { font-weight: 600; }
+.rp-note {
+  border-left: 3px solid var(--color-primary-container);
+  background: #fff;
+  padding: 1rem 1.25rem;
+  border-radius: 0 12px 12px 0;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.rp-table {
+  overflow-x: auto;
+  border: 1px solid var(--color-outline-variant);
+  border-radius: 12px;
+  background: #fff;
+  -webkit-overflow-scrolling: touch;
+}
+.rp-table table { width: 100%; min-width: 34rem; border-collapse: collapse; font-size: 0.9375rem; line-height: 1.5; }
+.rp-table th, .rp-table td { padding: 0.75rem 1rem; text-align: left; vertical-align: top; border-bottom: 1px solid var(--color-outline-variant); }
+.rp-table thead th { font-size: 0.8125rem; font-weight: 600; color: var(--color-on-surface-variant); background: #F2F5EF; }
+.rp-table tbody th { font-weight: 600; }
+.rp-table tbody tr:last-child th, .rp-table tbody tr:last-child td { border-bottom: 0; }
+.rp-caption { margin-top: 0.6rem; font-size: 0.8125rem; line-height: 1.5; color: var(--color-on-surface-variant); }

@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=../reelkit/skills/reelkit/schema/reelkit.schema.json
+# Regenerate: start the seeded demo stack (supabase/tests/browser/seed.sql), then run reelkit; see README "Regenerating the media"
+name: Klaroh
+tagline: Client visibility for cold email agencies
+baseUrl: http://localhost:3100
+defaults: { viewports: [desktop], theme: light, outputs: [still, framed] }
+auth:
+  mode: token
+  checkUrl: /dashboard
+  loginUrl: /auth/login
+  token:
+    cookies: [{ name: sb-localhost-auth-token, value: "${KLAROH_SESSION}", domain: localhost }]
+scenes:
+  - name: landing
+    title: Landing page
+    url: /
+  - name: overview
+    title: Overview dashboard
+    url: /dashboard
+    auth: true
+    viewports: [desktop, tablet, mobile]
+    waitFor: { text: "Outcomes by campaign" }
+  - name: campaigns
+    title: Campaign comparison
+    url: /campaigns
+    auth: true
+    waitFor: { text: "Campaign comparison" }
+  - name: inbox
+    title: Unified reply inbox
+    url: /inbox
+    auth: true
+    waitFor: { text: "Sarah Thomas" }
+  - name: infrastructure
+    title: Mailbox and domain health
+    url: /infrastructure
+    auth: true
+  - name: portal
+    title: Client portal
+    url: "/c/vish-hire/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    waitFor: { text: "Progress over time" }
+    viewports: [desktop, mobile]
+  - name: tour
+    title: Product tour
+    url: /dashboard
+    auth: true
+    outputs: [mp4, gif, framed]
+    zoom: 1.0
+    waitFor: { text: "Outcomes by campaign" }
+    actions:
+      - wait: 900
+      - scroll: 500
+      - wait: 900
+      - scroll: top
+      - click: 'a[href="/campaigns"]'
+      - waitFor: { text: "Campaign comparison" }
+      - wait: 900
+      - scroll: 700
+      - wait: 900
+      - click: 'a[href="/inbox"]'
+      - waitFor: { text: "Sarah Thomas" }
+      - wait: 700
+      - click: "text=John Smith"
+      - wait: 1200
+      - click: 'a[href="/infrastructure"]'
+      - wait: 1800
+frame: { url: app.klaroh.online }
+marketing: { hero: tour, trio: overview, social: { scene: overview } }
+readme: { gallery: [campaigns, inbox, infrastructure, portal] }
